@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>香港兩日行程與地圖連結</title>
+    <!-- 載入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 使用 Inter 字體以確保現代感和良好的可讀性 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f8f9;
+        }
+        /* 浮動提示訊息的樣式 */
+        #feedback-message {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+    </style>
+    <script>
+        // 設定 Tailwind CSS 配置，使用 Inter 字體
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'hk-blue': '#0070b8', /* 參考香港天星小輪或旗幟的藍色 */
+                        'hk-red': '#e30022', /* 參考香港旗幟的紅色 */
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    }
+                }
+            }
+        }
+
+        // 行程數據，包含地點名稱和用於 Google 地圖搜索的關鍵詞
+        const itinerary = {
+            day1: [
+                { name: '香港國際機場', query: '香港國際機場' },
+                { name: '城景國際 Check-in', query: '城景國際' },
+                { name: '旺角 紅茶冰室', query: '旺角 紅茶冰室' },
+                { name: '華星冰室', query: '華星冰室' },
+                { name: '友城商業中心', query: '友城商業中心' },
+                { name: 'hashtag b (旺角)', query: 'hashtag b 旺角' },
+                { name: '朗豪坊', query: '朗豪坊' },
+                { name: '紅茶冰室 (油麻地)', query: '油麻地 紅茶冰室' },
+                { name: '興記菜館', query: '興記菜館' },
+                { name: '佳佳甜品', query: '佳佳甜品' },
+                { name: '媽咪雞蛋仔', query: '媽咪雞蛋仔' },
+                { name: '澳洲牛奶公司', query: '澳洲牛奶公司' },
+                { name: 'Backhouse 蛋撻', query: 'Backhouse 蛋撻' },
+                { name: 'K11 MUSEA 人文購物藝術館', query: 'K11 MUSEA' },
+                { name: 'Cosme Hong Kong', query: 'Cosme Hong Kong' },
+                { name: '維多利亞港', query: '維多利亞港' },
+            ],
+            day2: [
+                { name: '白沙道', query: '白沙道 銅鑼灣' },
+                { name: '百德新街', query: '百德新街 銅鑼灣' },
+                { name: '星街小區', query: '星街小區' },
+                { name: '太古廣場', query: '太古廣場' },
+                { name: '富豪雪糕 (流動雪糕車)', query: '富豪雪糕 香港' },
+                { name: '中環碼頭', query: '中環碼頭' },
+                { name: '一樂燒鵝', query: '一樂燒鵝' },
+                { name: '蘭芳園', query: '蘭芳園 中環' },
+                { name: '林里手打檸檬茶', query: '林里手打檸檬茶' },
+                { name: '祥興記上海生煎包', query: '祥興記上海生煎包' },
+                { name: '嘉咸街 (壁畫)', query: '嘉咸街 壁畫' },
+                { name: '中環花園道山頂纜車總站', query: '中環花園道山頂纜車總站' },
+            ]
+        };
+
+        /**
+         * 構造 Google 地圖搜索連結並在新分頁開啟
+         * @param {string} query 要搜索的關鍵詞
+         */
+        function openMap(query) {
+            const encodedQuery = encodeURIComponent(query);
+            const mapUrl = `https://www.google.com/maps/search/${encodedQuery}`;
+            window.open(mapUrl, '_blank');
+        }
+
+        /**
+         * 顯示複製成功的提示訊息
+         * @param {string} message 要顯示的訊息
+         */
+        function showFeedback(message) {
+            const feedbackEl = document.getElementById('feedback-message');
+            // 確保訊息可見
+            feedbackEl.textContent = message;
+            feedbackEl.classList.remove('opacity-0', 'scale-90', 'hidden');
+            feedbackEl.classList.add('opacity-100', 'scale-100');
+
+            // 2 秒後隱藏訊息
+            setTimeout(() => {
+                feedbackEl.classList.remove('opacity-100', 'scale-100');
+                feedbackEl.classList.add('opacity-0', 'scale-90');
+            }, 2000);
+            // 確保在動畫結束後隱藏，防止擋住點擊
+            setTimeout(() => {
+                feedbackEl.classList.add('hidden');
+            }, 2300);
+        }
+
+        /**
+         * 構造 Google 地圖搜索連結並複製到剪貼簿
+         * @param {Event} event 點擊事件對象
+         * @param {string} query 要搜索的關鍵詞
+         */
+        function copyLink(event, query) {
+            // 阻止事件冒泡到父層 (如果有其他點擊事件)
+            event.stopPropagation();
+            
+            const encodedQuery = encodeURIComponent(query);
+            const mapUrl = `https://www.google.com/maps/search/${encodedQuery}`;
+
+            // 使用 Clipboard API 複製 (優先嘗試)
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(mapUrl).then(() => {
+                    showFeedback('地圖連結已複製！');
+                }).catch(() => {
+                    // Fallback to execCommand if modern API fails
+                    fallbackCopyTextToClipboard(mapUrl);
+                });
+            } else {
+                 // Fallback for older browsers
+                 fallbackCopyTextToClipboard(mapUrl);
+            }
+        }
+
+        /**
+         * 舊版瀏覽器或受限環境下的複製備用方案
+         * @param {string} text 要複製的文本
+         */
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            
+            // 設置為不可見但可選中
+            textArea.style.position = "fixed";
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.opacity = "0";
+            
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showFeedback('地圖連結已複製！(備用方法)');
+                } else {
+                    showFeedback('複製失敗，請手動複製: ' + text);
+                }
+            } catch (err) {
+                console.error('Fallback: 複製失敗', err);
+                showFeedback('複製失敗，請手動複製: ' + text);
+            }
+
+            document.body.removeChild(textArea);
+        }
+        
+        /**
+         * 根據行程數據動態生成 HTML 內容
+         * @param {Array} pois - 景點數據
+         * @param {HTMLElement} listElement - 渲染到的 UL 元素
+         */
+        function renderDay(pois, listElement) {
+            pois.forEach((poi, index) => {
+                const li = document.createElement('li');
+                li.className = 'py-3 sm:py-4 border-b border-gray-100 last:border-b-0 group';
+                
+                // 主要容器不再是點擊目標，以避免點擊名稱時觸發複製
+                li.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <!-- 序號或圖標 -->
+                        <div class="flex-shrink-0 text-hk-blue font-bold w-6 h-6 flex items-center justify-center bg-hk-blue/10 rounded-full text-xs">
+                            ${index + 1}
+                        </div>
+                        <!-- 景點名稱與描述 -->
+                        <div class="flex-1 min-w-0">
+                            <p class="text-lg font-medium text-gray-900 truncate">
+                                ${poi.name}
+                            </p>
+                            <p class="text-sm text-gray-500 truncate mt-0.5">
+                                ${poi.query.includes('Check-in') ? '住宿' : '景點/美食'}
+                            </p>
+                        </div>
+                        
+                        <!-- 動作按鈕容器 -->
+                        <div class="flex items-center space-x-2 flex-shrink-0">
+                            <!-- 複製按鈕 -->
+                            <button onclick="copyLink(event, '${poi.query}')" title="複製地圖連結" class="p-2 rounded-full text-gray-500 hover:text-hk-blue hover:bg-gray-100 transition duration-150 focus:outline-none focus:ring-2 focus:ring-hk-blue/50">
+                                <!-- Copy Icon SVG -->
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy">
+                                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2v2"/>
+                                </svg>
+                            </button>
+
+                            <!-- 開啟地圖按鈕 -->
+                            <button onclick="openMap('${poi.query}')" title="開啟 Google 地圖" class="p-2 rounded-full text-hk-blue hover:text-hk-red hover:bg-hk-blue/10 transition duration-150 focus:outline-none focus:ring-2 focus:ring-hk-red/50">
+                                <!-- Map Pin SVG -->
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin">
+                                    <path d="M12 18s-4-6-4-8c0-4.42 3.58-8 8-8s8 3.58 8 8c0 2-4 8-4 8z"/>
+                                    <circle cx="12" cy="10" r="3"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                listElement.appendChild(li);
+            });
+        }
+
+
+        /**
+         * 確保 DOM 載入完成後渲染行程
+         */
+        function renderItinerary() {
+            const day1List = document.getElementById('day1-list');
+            const day2List = document.getElementById('day2-list');
+
+            renderDay(itinerary.day1, day1List);
+            renderDay(itinerary.day2, day2List);
+        }
+
+        window.onload = renderItinerary;
+
+    </script>
+</head>
+<body class="p-4 sm:p-8">
+    
+    <!-- 複製成功提示訊息 (浮動在右上角) -->
+    <div id="feedback-message" class="fixed top-4 right-4 bg-green-500 text-white p-3 rounded-xl shadow-xl opacity-0 scale-90 transform hidden z-50 text-sm font-semibold">
+        <!-- Message content will be set by JavaScript -->
+    </div>
+
+    <div class="max-w-4xl mx-auto">
+
+        <!-- 標題區塊 -->
+        <header class="text-center mb-10 p-6 bg-white shadow-lg rounded-xl">
+            <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-2">
+                香港兩日精彩行程
+            </h1>
+            <p class="text-xl text-hk-blue font-semibold">
+                點擊圖標以開啟地圖或複製連結
+            </p>
+            <div class="mt-4 text-gray-500 text-sm">
+                <p>
+                    <span class="text-hk-red font-bold">🗺️ 地圖圖標：</span> 開啟 Google 地圖
+                    <span class="text-hk-blue font-bold"> | 📋 複製圖標：</span> 複製地圖連結
+                </p>
+            </div>
+        </header>
+
+        <!-- 行程卡片容器 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+            <!-- 第一天行程 -->
+            <div class="bg-white shadow-xl rounded-xl overflow-hidden transform hover:scale-[1.01] transition duration-300">
+                <div class="p-6 bg-hk-blue text-white">
+                    <h2 class="text-3xl font-bold flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun-medium mr-3">
+                            <circle cx="12" cy="12" r="4"/><path d="M12 4v1"/><path d="M12 19v1"/><path d="M5.64 5.64l.7.7"/><path d="M17.66 17.66l.7.7"/><path d="M4 12H5"/><path d="M19 12h1"/><path d="M5.64 17.66l.7-.7"/><path d="M17.66 5.64l.7-.7"/>
+                        </svg>
+                        第一天：九龍美食與文化
+                    </h2>
+                    <p class="mt-1 text-sm opacity-90">旺角、油麻地、尖沙咀</p>
+                </div>
+                <div class="p-6">
+                    <ul id="day1-list" role="list" class="divide-y divide-gray-200">
+                        <!-- 行程列表將由 JavaScript 動態生成 -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 第二天行程 -->
+            <div class="bg-white shadow-xl rounded-xl overflow-hidden transform hover:scale-[1.01] transition duration-300">
+                <div class="p-6 bg-hk-red text-white">
+                    <h2 class="text-3xl font-bold flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mountain-sun mr-3">
+                            <path d="m11 2 4 6h-4l-4-6z"/><path d="m11 10 4 6h-4l-4-6z"/><path d="m11 18 4 6h-4l-4-6z"/>
+                            <path d="M12 1v22"/><path d="M1 12h22"/>
+                        </svg>
+                        第二天：港島時尚與經典
+                    </h2>
+                    <p class="mt-1 text-sm opacity-90">銅鑼灣、中環、山頂</p>
+                </div>
+                <div class="p-6">
+                    <ul id="day2-list" role="list" class="divide-y divide-gray-200">
+                        <!-- 行程列表將由 JavaScript 動態生成 -->
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 備註區塊 -->
+        <footer class="mt-10 pt-6 text-center text-gray-500 border-t border-gray-200">
+            <p>&copy; 香港兩日行程規劃</p>
+            <p class="text-xs mt-2">現在您可以點擊複製圖標來取得地圖連結。</p>
+        </footer>
+
+    </div>
+</body>
+</html>
